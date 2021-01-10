@@ -4,4 +4,4 @@
 
 Se parte de desarrollo anterior
 
-_domingo, 10 de enero de 2021_
+Inicio: _domingo, 10 de enero de 2021_
