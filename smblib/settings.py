@@ -12,24 +12,48 @@
 
 """
 
-from pathlib import Path
+import os
+from datetime import datetime
 import json
+from pathlib import Path
+from utiles.strutil import color, is_valid_email
+from utiles.pathutil import disjoin
+from utiles.systools import SysInfo
 
 
-class ConfigData(object):
-    """
-    ConfigData
-
-    Clase para el mantenimiento  de los datos
-    y acceso al fichero de configuración de 'smbackup'
-    """
+class Settings(ConfigData):
 
     __version = "4.0"
-    __config_dir = Path(f"/etc/smbackup-{__version}")
-    __config_file = "smbconfig.json"
+    ConfigDir = Path(f"/etc/smbackup-{__version}")
+    ConfigFile = ConfigDir.joinpath(ConfigDir, "config.json")
 
     def __init__(self):
-        super().__init__()
+        self.__sysinfo = SysInfo()
+
+        self.__modificado = False
+        self.__DirThisFile = Path(__file__).parent
+        self.__CurrentDir = Path.cwd()
+
+        self.__LastChange = datetime.fromtimestamp(
+            self.ConfigFile.stat().st_mtime)
+        with open(self.ConfigFile, 'r') as file:
+            data_conf = json.load(file)
+
+        self.__Presenta = data_conf['presenta']
+        self.__email = data_conf['email']
+        self.__DirUnits = self.ConfigDir.joinpath(
+            data_conf['DIRS']['CONF_UNITS'])
+        self.__DirInstall = Path(data_conf['DIRS']['INSTALL'])
+        self.__DirLibraries = self.__DirInstall.joinpath(
+            data_conf['DIRS']['LIBRARIES'])
+
+        file_default_unit = self.__DirUnits.joinpath("default.json")
+
+        with open(file_default_unit, 'r') as file:
+            data_default_unit = json.load(file)
+
+        self.__DefaultUnitName = data_default_unit['nombre']
+        self.__DefaultMountPoint = data_default_unit['mount_point']
 
     def __str__(self):
         """
@@ -65,11 +89,6 @@ class ConfigData(object):
         if self.__modificado:
             raise NameError(color.ERROR + "Quedan modificaciones sin salvar" +
                             color.END)
-
-    def __read(self):
-        # TODO:
-        with open(self.ConfigFile, 'r') as file:
-            data_conf = json.load(file)
 
     def save(self):
         """
