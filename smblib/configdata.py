@@ -16,7 +16,7 @@ from pathlib import Path
 from shutil import copy2
 import json
 from datetime import datetime
-from utiles.strutil import color, h1, h2, data_line
+from utiles.strutil import data_line
 
 
 class ConfigData():
@@ -32,6 +32,9 @@ class ConfigData():
         self.__fileconf = None
         self.__modtime = None
 
+        for key in self.keys():
+            self[key] = None
+
         if isinstance(data, dict) or isinstance(data, ConfigData):
             for item in data.keys():
                 self[item] = data[item]
@@ -46,10 +49,11 @@ class ConfigData():
         self.__changed = False
 
     def __str__(self):
-        _str = h1(self.display)
-        _str += h2(f"Versión: {self.version} - {self.m_time}")
+        _str = ""
+        # _str += h1(self.display)
+        # _str += h2(f"Versión: {self.version} - {self.m_time}")
         for item in self.keys():
-            _line = {'key': item, 'value': self[item]}
+            _line = {'key': item, 'value': str(self[item])}
             _str += data_line(_line)
         return _str
 
@@ -125,34 +129,48 @@ class ConfigData():
         raise ValueError(f"{item} no existe")
 
     def load(self, pathfile):
-        if pathfile.exists():
+        if isinstance(pathfile, str):
+            _path = Path(pathfile)
+        else:
+            _path = pathfile
+
+        if not isinstance(_path, Path):
+            raise ValueError
+
+        if _path.exists():
             self.__fileexists = True
-            self.__fileconf = pathfile
-            self.__modtime = pathfile.stat().st_mtime
+            self.__fileconf = _path
+            self.__modtime = _path.stat().st_mtime
         else:
             raise RuntimeError("El fichero de configuración no existe")
 
-        with pathfile.open('r') as file:
+        with _path.open('r') as file:
             _data = json.load(file)
             for item in _data.keys():
                 self[item] = _data[item]
 
     def save(self, pathfile):
-        """ save salva los datos
-        """
+        if isinstance(pathfile, str):
+            _path = Path(pathfile)
+        else:
+            _path = pathfile
 
-        if self.file_exists:
-            _backfile = str(self.file_conf) + '~'
-            copy2(str(self.file_conf), str(_backfile))
+        if not isinstance(_path, Path):
+            raise ValueError
+
+        if str(self.__fileconf) == str(_path):
+            if self.file_exists:
+                _backfile = str(self.file_conf) + '~'
+                copy2(str(self.file_conf), str(_backfile))
 
         _data = {}
         for item in self.keys():
-            _data[item] = self[item]
-        with open(self.file_conf, 'w') as file:
+            _data[item] = str(self[item])
+        with _path.open('w') as file:
             json.dump(_data, file, indent=4, ensure_ascii=False)
 
-        self.__fileconf = pathfile
-        self.__modtime = pathfile.stat().st_mtime
+        self.__fileconf = _path
+        self.__modtime = self.__fileconf.stat().st_mtime
 
         self.__changed = False
 
@@ -255,20 +273,88 @@ class ConfigData():
 
     @units_conf.setter
     def units_conf(self, value):
-        self.__units_conf = value
+        if isinstance(value, str):
+            _path = Path(value)
+        elif isinstance(value, Path):
+            _path = value
+        elif value is None:
+            self.__units_conf = None
+            return
+        else:
+            raise ValueError
+
+        if _path.root == '/':
+            self.__units_conf = _path
+        else:
+            self.__units_conf = self.__fileconf.parent.joinpath(_path)
+
+        if not self.__units_conf.exists():
+            self.__units_conf.mkdir(parents=True, exist_ok=True)
+
         self.__changed = True
 
     @installation.setter
     def installation(self, value):
-        self.__installation = value
+        if isinstance(value, str):
+            _path = Path(value)
+        elif isinstance(value, Path):
+            _path = value
+        elif value is None:
+            self.__installation = None
+            return
+        else:
+            raise ValueError
+
+        if _path.root == '/':
+            self.__installation = _path
+        else:
+            self.__installation = Path('/opt').joinpath(_path)
+
+        if not self.__installation.exists():
+            self.__installation.mkdir(parents=True)
+
         self.__changed = True
 
     @libraries.setter
     def libraries(self, value):
-        self.__libraries = value
+        if isinstance(value, str):
+            _path = Path(value)
+        elif isinstance(value, Path):
+            _path = value
+        elif value is None:
+            self.__libraries = None
+            return
+        else:
+            raise ValueError
+
+        if _path.root == '/':
+            self.__libraries = _path
+        else:
+            self.__libraries = Path(self.__installation).joinpath(_path)
+
+        if not self.__libraries.exists():
+            self.__libraries.mkdir(parents=True)
+
         self.__changed = True
 
     @units_mount.setter
     def units_mount(self, value):
-        self.__units_mount = value
+        if isinstance(value, str):
+            _path = Path(value)
+        elif isinstance(value, Path):
+            _path = value
+        elif value is None:
+            self.__units_mount = None
+            return
+        else:
+            raise ValueError
+
+        if _path.root == '/':
+            self.__units_mount = _path
+        else:
+            self.__units_mount = Path('/mnt/smbackup').joinpath(_path)
+
+        if not self.__units_mount.exists():
+            self.__units_mount.mkdir(parents=True)
+
         self.__changed = True

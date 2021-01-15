@@ -12,12 +12,10 @@
 
 """
 
-import os
-import time
-import shutil
-
-from lib.configdata import ConfigData
-from utiles.strutil import Color, text_paragraph, clear, h2
+from smblib.settings import Settings
+from utiles.color import Color
+from utiles.strutil import h1, h2, data_line, clear
+from utiles.editdata import edit_data
 from utiles.menu import Menu
 
 color = Color()
@@ -35,32 +33,38 @@ class EditConfig():
 
         Realiza la presentación y controla el menú
         """
-        self.__HostConf = ConfigData()
+        self.__LocalConf = Settings()
 
         options = [{
             'item':
-            "eMail:",
+            "email:",
             'value':
-            self.__HostConf.email,
+            self.__LocalConf.email,
             'desc':
-            "Dirección email del administrador o \
-                    encargado de recibir los avisos y resumenes"
+            """
+                        Dirección email del administrador o
+                        encargado de recibir los avisos y resumenes
+                        """
         }, {
-            'item': "Unidades:",
-            'value': self.__HostConf.DirUnits,
-            'desc': "Directorio para las configuraciones de unidades"
+            'item':
+            "units_conf:",
+            'value':
+            self.__LocalConf.units_conf,
+            'desc':
+            """
+                        Directorio para las configuraciones
+                        de unidades
+                        """
         }, {
-            'item': "Remote Mount:",
-            'value': self.__HostConf.RemoteMount,
-            'desc': "Directorio en el que montar los sistemas remotos"
-        }, {
-            'item': "Default Mount Point:",
-            'value': self.__HostConf.DefaultMountPoint,
-            'desc': "Punto de Montado de unidades por defecto"
-        }, {
-            'item': "Nombre Unidad por defecto:",
-            'value': self.__HostConf.DefaultUnitName,
-            'desc': "Nombre de la unidad que se usará por defecto"
+            'item':
+            "units_mount:",
+            'value':
+            self.__LocalConf.DefaultMountPoint,
+            'desc':
+            """
+                        Punto de Montado de unidades
+                        por defecto
+                        """
         }]
 
         while True:
@@ -76,11 +80,7 @@ class EditConfig():
             elif editar.option == 1:
                 self.__edit_dir_unities()
             elif editar.option == 2:
-                self.__edit_remote_mount()
-            elif editar.option == 3:
                 self.__edit_default_mount_point()
-            elif editar.option == 4:
-                self.__edit_default_unit()
 
     def __del__(self):
         """
@@ -88,21 +88,23 @@ class EditConfig():
 
         salva el fichero de configuración
         """
-        self.__HostConf.save()
+        self.__LocalConf.save(self.__LocalConf.file_conf)
 
     def __str__(self):
-        __str = f"\n{color.BLANCO}{'='*60}\n"
-        __str += " Edicción del fichero de configuración ".center(60, "*")
-        __str += f"\n{'='*60}{color.END}\n"
-        __str += f"Fichero: {color.VERDE}"
-        __str += f"{self.__HostConf.ConfigFile.rjust(51)}{color.END}\n"
+        __str = h1("Edicción del fichero de configuración")
+        __str += data_line({
+            'key': "Fichero",
+            'value': f"{self.__LocalConf.ConfigFile}"
+        })
+        h2('')
 
-        __lastUpdate = time.ctime(self.__HostConf.LastChange)
+        # __lastUpdate = time.ctime(self.__LocalConf.m_time)
 
-        __str += "Modificado por última vez: "
-        __str += f"{color.VERDE}{__lastUpdate.rjust(33)}{color.END}\n"
-        __str += f"{'='*60}\n\n{self.__HostConf}"
-        __str += f"\n{'='*60}\n"
+        __str += data_line({
+            'key': "Modificado por última vez",
+            'value': f"{self.__LocalConf.m_time}"
+        })
+        __str += str(self.__LocalConf)
 
         return __str
 
@@ -112,23 +114,17 @@ class EditConfig():
 
         edita la dirección de mail del administrador
         """
-        print(h2(" Dirección de eMail "))
-
-        print(f"Valor actual: {color.VERDE}%s{color.END}" %
-              self.__HostConf.email.rjust(46, '.'))
-
-        strhelp = '''
+        _data = {}
+        _data['title'] = "Dirección de eMail"
+        _data['key'] = "Valor actual"
+        _data['value'] = self.__LocalConf.email
+        _data['help'] = '''
                   Esta dirección se usará para enviar las alertas,
                   informe de errores y resumenes de copias.
                   '''
+        _data['prompt'] = "Introduce el nuevo valor"
 
-        strhelp = text_paragraph(strhelp, 60, ' ' * 5)
-        print(f"\n{color.MARRON}{strhelp}{color.END}\n\n")
-
-        print("\n Introduce el nuevo valor")
-        nuevoemail = input(f"o solo [Intro] para no modificar: {color.VERDE}")
-        self.__HostConf.email = nuevoemail
-        print(f"{color.END}\n{'-'*60}\n{self.__HostConf}\n{'-'*60}\n")
+        self.__LocalConf.email = edit_data(_data)
 
     def __edit_dir_unities(self):
         """
@@ -138,81 +134,22 @@ class EditConfig():
         configuraciones de unidades de backup
         """
 
-        title = " Path al directorio de configuración \n"
-        title += "de unidades"
-        print(h2(title))
-
-        print(f"Valor actual: {color.VERDE}%s{color.END}" %
-              self.__HostConf.DirUnits.rjust(46, '.'))
-
-        strhelp = '''
+        _data = {}
+        _data['title'] = " Path al directorio de configuración \nde unidades"
+        _data['key'] = "Valor actual"
+        _data['value'] = str(self.__LocalConf.units_conf)
+        _data['help'] = '''
                     En este directorio se guardaren los datos de
                     configuración de unidades. Si comienza por
                     barra '/' asignará un path absoluto, si no será
                     un subdirectorio del de Configuración.
                     '''
 
-        strhelp = text_paragraph(strhelp, 60, ' ' * 5, '')
-        print(f"\n{color.MARRON}{strhelp}{color.END}\n\n")
+        _data['prompt'] = "Introduce el nuevo valor"
 
-        viejopath = self.__HostConf.DirUnits
-        print("\n Introduce el nuevo valor")
-        nuevopath = input(f"o solo [Intro] para no modificar: {color.VERDE}")
-        print(f"{color.END}")
+        self.__LocalConf.units_conf = edit_data(_data)
 
-        if nuevopath != "":
-            self.__HostConf.DirUnits = nuevopath
-            if viejopath != self.__HostConf.DirUnits:
-                if os.path.isdir(viejopath):
-                    if os.listdir(viejopath):
-                        print("El anterior direcotrio contenía ficheros")
-                        print("¿Quiere moverlos a la nueva ubicación)")
-                        respuesta = input("[s/n]:")
-                        if respuesta[0].lower() == "s":
-                            lista = os.listdir(viejopath)
-                            for f in lista:
-                                fullf = os.path.join(viejopath, f)
-                                shutil.move(fullf,
-                                            self.__HostConf.DirUnits + "/")
-
-    def __edit_remote_mount(self):
-        """
-        __edit_remote_mount
-
-        edita el directorio donde montar los sistemas de ficheros remotos
-        """
-
-        clear()
-        print(h2("Punto de montado de sistemas remotos"))
-
-        print(f"Valor actual: {color.VERDE}%s{color.END}" %
-              self.__HostConf.RemoteMount.rjust(46, '.'))
-
-        strhelp = '''
-                    En este directorio se montarán los sistema
-                    de archivos remotos para los casos en los
-                    que no se pueda utilizar rsync directo.
-                    Se creará un subdirectorio con el nombre
-                    de la copia.
-                    En este procedimiento suele ser mucho más lento.
-                    '''
-
-        strhelp = text_paragraph(strhelp, 60)
-
-        print(f"\n{color.MARRON}{strhelp}{color.END}\n\n")
-
-        print("\n Introduce el nuevo valor")
-        nuevopath = input(f"o solo [Intro] para no modificar: {color.VERDE}")
-        print(f"{color.END}")
-
-        if nuevopath != "":
-            try:
-                self.__HostConf.RemoteMount = nuevopath
-            except PermissionError:
-                print(f"{color.ERROR}{'*'*60}")
-                print("No se ha podido crear el directorio")
-                print("No dispone de permisos. Ejecute el programa con sudo.")
-                print(f"{'*'*60}{color.END}")
+        return
 
     def __edit_default_mount_point(self):
         """
@@ -222,67 +159,21 @@ class EditConfig():
         si no están montadas en el momento de la copia
         """
 
-        print("-" * 60)
-        print(" Punto de montado de ".center(60))
-        print(" sistemas remotos".center(60))
-        print("-" * 60)
-
-        print(f"Valor actual: {color.VERDE}%s{color.END}" %
-              self.__HostConf.DefaultMountPoint.rjust(46, '.'))
-
-        strhelp = '''
+        _data = {}
+        _data[
+            'title'] = "Punto de montado por defecto de \n" + \
+                        " sistemas remotos"
+        _data['key'] = "Valor actual"
+        _data['value'] = str(self.__LocalConf.units_mount)
+        _data['help'] = '''
                   En este directorio se montarán las unidades
                   que en el momento de utilizar no lo estuvieran.
                   '''
+        _data['prompt'] = "Introduce el nuevo valor"
 
-        strhelp = text_paragraph(strhelp, 60, ' ' * 5)
+        self.__LocalConf.units_mount = edit_data(_data)
 
-        print(f"\n{color.MARRON}{strhelp}{color.END}\n\n")
-
-        print("\n Introduce el nuevo valor")
-        nuevopath = input(f"o solo [Intro] para no modificar: {color.VERDE}")
-        print(f"{color.END}")
-
-        if nuevopath != "":
-            try:
-                self.__HostConf.DefaultMountPoint = nuevopath
-            except PermissionError:
-                print(f"{color.ERROR}{'*'*60}")
-                print("No se ha podido crear el directorio")
-                print("No dispone de permisos. Ejecute el programa con sudo.")
-                print(f"{'*'*60}{color.END}")
-
-    def __edit_default_unit(self):
-        """
-        __edit_default_unit
-
-        edita el nombre de la unidad a usar por defecto
-        """
-
-        print("-" * 60)
-        print(" Unidad por defecto ".center(60))
-        print("-" * 60)
-
-        print(f"Valor actual: {color.VERDE}%s{color.END}" %
-              self.__HostConf.DefaultUnitName.rjust(46, '.'))
-
-        strhelp = '''
-                    Esta es la unidad que se utilizará en caso de que no
-                    se especifique otra cosa.
-                    '''
-
-        strhelp = text_paragraph(strhelp, 60, ' ' * 5)
-        print(f"\n{color.MARRON}{strhelp}{color.END}\n\n")
-
-        lista = os.listdir(self.__HostConf.DirUnits)
-        opciones = []
-        for uni in lista:
-            if "default" not in uni:
-                opciones.append({'item': os.path.splitext(uni)[0], 'desc': ""})
-        elige = Menu(opciones)
-
-        if elige.option is not None:
-            self.__HostConf.DefaultUnitName = opciones[elige.option]['item']
+        return
 
     @property
     def modificado(self):
@@ -295,4 +186,4 @@ class EditConfig():
             bool: True = modificado
         """
 
-        return self.__HostConf.Modificado
+        return self.__LocalConf.Modificado
