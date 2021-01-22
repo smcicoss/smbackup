@@ -32,14 +32,49 @@ class Settings(ConfigData):
         super().save(self.file_conf)
 
     @property
-    def DefaultMountPoint(self):
-        return self.units_mount
+    def units_conf(self):
+        return super().units_conf
 
-    @DefaultMountPoint.setter
-    def DefaultMountPoint(self, value):
-        path = Path(value).resolve()
-        if path.parents[0] != "/":
+    @units_conf.setter
+    def units_conf(self, value):
+        if value is None:
+            self.set_units_conf(value)
+            return
+        elif isinstance(value, str):
+            path = Path(value).expanduser()
+        elif isinstance(value, Path):
+            path = value.expanduser()
+        else:
+            raise ValueError
+
+        if path.root != "/":
+            path = self.ConfigDir / path
+
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+
+        self.set_units_conf(path)
+
+    @property
+    def units_mount(self):
+        return Path(super().units_mount)
+
+    @units_mount.setter
+    def units_mount(self, value):
+        if value is None:
+            self.set_units_mount(value)
+            return
+        elif isinstance(value, str):
+            path = Path(value).expanduser()
+        elif isinstance(value, Path):
+            path = value.expanduser()
+        else:
+            raise ValueError
+
+        if path.root != "/":
             path = Path("/mnt") / path
 
-        path.mkdir(parents=True, exist_ok=True)
-        self.units_mount = path
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+
+        self.set_units_mount(path)

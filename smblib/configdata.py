@@ -50,8 +50,6 @@ class ConfigData():
 
     def __str__(self):
         _str = ""
-        # _str += h1(self.display)
-        # _str += h2(f"Versión: {self.version} - {self.m_time}")
         for item in self.keys():
             _line = {'key': item, 'value': str(self[item])}
             _str += data_line(_line)
@@ -68,65 +66,13 @@ class ConfigData():
         ]
 
     def __getitem__(self, item):
-        if item == 'version':
-            return self.version
-        if item == 'uuid':
-            return self.uuid
-        if item == 'vendor':
-            return self.vendor
-        if item == 'model':
-            return self.model
-        if item == 'distro':
-            return self.distro
-        if item == 'display':
-            return self.display
-        if item == 'email':
-            return self.email
-        if item == 'units_conf':
-            return self.units_conf
-        if item == 'installation':
-            return self.installation
-        if item == 'libraries':
-            return self.libraries
-        if item == 'units_mount':
-            return self.units_mount
-        raise ValueError(f"{item} no existe")
+        return self.__getattribute__(item)
 
     def __setitem__(self, item, value):
-        if item == 'version':
-            self.version = value
-            return
-        if item == 'uuid':
-            self.uuid = value
-            return
-        if item == 'vendor':
-            self.vendor = value
-            return
-        if item == 'model':
-            self.model = value
-            return
-        if item == 'distro':
-            self.distro = value
-            return
-        if item == 'display':
-            self.display = value
-            return
-        if item == 'email':
-            self.email = value
-            return
-        if item == 'units_conf':
-            self.units_conf = value
-            return
-        if item == 'installation':
-            self.installation = value
-            return
-        if item == 'libraries':
-            self.libraries = value
-            return
-        if item == 'units_mount':
-            self.units_mount = value
-            return
-        raise ValueError(f"{item} no existe")
+        if item in self.keys():
+            self.__setattr__(item, value)
+        else:
+            raise NameError
 
     def load(self, pathfile):
         if isinstance(pathfile, str):
@@ -273,28 +219,22 @@ class ConfigData():
 
     @units_conf.setter
     def units_conf(self, value):
-        if isinstance(value, str):
-            _path = Path(value)
-        elif isinstance(value, Path):
-            _path = value
-        elif value is None:
+        self.set_units_conf(value)
+
+    def set_units_conf(self, value):
+
+        if value is not None:
+            self.__units_conf = str(value)
+        else:
             self.__units_conf = None
-            return
-        else:
-            raise ValueError
-
-        if _path.root == '/':
-            self.__units_conf = _path
-        else:
-            self.__units_conf = self.__fileconf.parent.joinpath(_path)
-
-        if not self.__units_conf.exists():
-            self.__units_conf.mkdir(parents=True, exist_ok=True)
 
         self.__changed = True
 
     @installation.setter
     def installation(self, value):
+        self.set_installation(value)
+
+    def set_installation(self, value):
         if isinstance(value, str):
             _path = Path(value)
         elif isinstance(value, Path):
@@ -317,6 +257,9 @@ class ConfigData():
 
     @libraries.setter
     def libraries(self, value):
+        self.set_libraries(value)
+
+    def set_libraries(self, value):
         if isinstance(value, str):
             _path = Path(value)
         elif isinstance(value, Path):
@@ -339,22 +282,13 @@ class ConfigData():
 
     @units_mount.setter
     def units_mount(self, value):
-        if isinstance(value, str):
-            _path = Path(value)
-        elif isinstance(value, Path):
-            _path = value
-        elif value is None:
+        self.set_units_mount(value)
+
+    def set_units_mount(self, value):
+
+        if value is not None:
+            self.__units_mount = str(value)
+        else:
             self.__units_mount = None
-            return
-        else:
-            raise ValueError
-
-        if _path.root == '/':
-            self.__units_mount = _path
-        else:
-            self.__units_mount = Path('/mnt/smbackup').joinpath(_path)
-
-        if not self.__units_mount.exists():
-            self.__units_mount.mkdir(parents=True)
 
         self.__changed = True
