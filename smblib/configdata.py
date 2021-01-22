@@ -50,6 +50,8 @@ class ConfigData():
 
     def __str__(self):
         _str = ""
+        # _str += h1(self.display)
+        # _str += h2(f"Versión: {self.version} - {self.m_time}")
         for item in self.keys():
             _line = {'key': item, 'value': str(self[item])}
             _str += data_line(_line)
@@ -77,10 +79,9 @@ class ConfigData():
     def load(self, pathfile):
         if isinstance(pathfile, str):
             _path = Path(pathfile)
-        else:
+        elif isinstance(pathfile, Path):
             _path = pathfile
-
-        if not isinstance(_path, Path):
+        else:
             raise ValueError
 
         if _path.exists():
@@ -219,22 +220,28 @@ class ConfigData():
 
     @units_conf.setter
     def units_conf(self, value):
-        self.set_units_conf(value)
-
-    def set_units_conf(self, value):
-
-        if value is not None:
-            self.__units_conf = str(value)
-        else:
+        if isinstance(value, str):
+            _path = Path(value)
+        elif isinstance(value, Path):
+            _path = value
+        elif value is None:
             self.__units_conf = None
+            return
+        else:
+            raise ValueError
+
+        if _path.root == '/':
+            self.__units_conf = _path
+        else:
+            self.__units_conf = self.__fileconf.parent.joinpath(_path)
+
+        if not self.__units_conf.exists():
+            self.__units_conf.mkdir(parents=True, exist_ok=True)
 
         self.__changed = True
 
     @installation.setter
     def installation(self, value):
-        self.set_installation(value)
-
-    def set_installation(self, value):
         if isinstance(value, str):
             _path = Path(value)
         elif isinstance(value, Path):
@@ -257,9 +264,6 @@ class ConfigData():
 
     @libraries.setter
     def libraries(self, value):
-        self.set_libraries(value)
-
-    def set_libraries(self, value):
         if isinstance(value, str):
             _path = Path(value)
         elif isinstance(value, Path):
@@ -282,13 +286,19 @@ class ConfigData():
 
     @units_mount.setter
     def units_mount(self, value):
-        self.set_units_mount(value)
-
-    def set_units_mount(self, value):
-
-        if value is not None:
-            self.__units_mount = str(value)
-        else:
+        if isinstance(value, str):
+            _path = Path(value)
+        elif isinstance(value, Path):
+            _path = value
+        elif value is None:
             self.__units_mount = None
+            return
+        else:
+            raise ValueError
+
+        if _path.root == '/':
+            self.__units_mount = _path
+        else:
+            self.__units_mount = Path('/mnt').joinpath(_path)
 
         self.__changed = True

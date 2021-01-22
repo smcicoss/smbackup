@@ -27,9 +27,6 @@ class EditConfig():
 
     Edita el fichero de configuración de forma interactiva
     """
-
-    __format_datetime = "%A %d-%b-%Y %H:%M:%S %Z"
-
     def __init__(self):
         """
         __init__ Constructor
@@ -62,7 +59,7 @@ class EditConfig():
             'item':
             "units_mount:",
             'value':
-            self.__LocalConf.units_mount,
+            self.__LocalConf.DefaultMountPoint,
             'desc':
             """
                         Punto de Montado de unidades
@@ -94,17 +91,18 @@ class EditConfig():
         self.__LocalConf.save(self.__LocalConf.file_conf)
 
     def __str__(self):
-        __str = h1(self.__LocalConf.display)
-        __str += h2("Edicción del fichero de configuración")
+        __str = h1("Edicción del fichero de configuración")
         __str += data_line({
             'key': "Fichero",
             'value': f"{self.__LocalConf.ConfigFile}"
         })
+        h2('')
+
+        # __lastUpdate = time.ctime(self.__LocalConf.m_time)
+
         __str += data_line({
-            'key':
-            "Modificado por última vez",
-            'value':
-            f"{self.__LocalConf.m_time.strftime(self.__format_datetime)}"
+            'key': "Modificado por última vez",
+            'value': f"{self.__LocalConf.m_time}"
         })
         __str += str(self.__LocalConf)
 
@@ -164,7 +162,7 @@ class EditConfig():
         _data = {}
         _data[
             'title'] = "Punto de montado por defecto de \n" + \
-                       " sistemas remotos"
+                        " sistemas remotos"
         _data['key'] = "Valor actual"
         _data['value'] = str(self.__LocalConf.units_mount)
         _data['help'] = '''
@@ -174,6 +172,14 @@ class EditConfig():
         _data['prompt'] = "Introduce el nuevo valor"
 
         self.__LocalConf.units_mount = edit_data(_data)
+
+        if self.__LocalConf.changed:
+            if not self.__LocalConf.units_mount.exists():
+                try:
+                    self.__LocalConf.units_mount.mkdir(parents=True)
+                except PermissionError:
+                    input("No está autorizado para esta operación")
+                    self.__LocalConf = Settings()
 
         return
 
