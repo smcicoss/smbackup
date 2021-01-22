@@ -3,7 +3,7 @@
 #
 
 import re
-import os.path as path
+import pathlib as Path
 from utiles.strutil import clean_str
 
 
@@ -12,12 +12,12 @@ class UnitData(object):
         super().__init__()
         if data is None or (not isinstance(data, dict)
                             and not isinstance(data, UnitData)):
-            for field in self.fields:
+            for field in self.keys():
                 self[field] = None
 
             self.__modified = False
         else:
-            for field in self.fields:
+            for field in self.keys():
                 self[field] = data[field]
 
     def __getitem__(self, key):
