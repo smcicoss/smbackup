@@ -13,15 +13,13 @@ de unidades configuradas
 
 """
 
-import os
-from os.path import basename
 from pathlib import Path
 
-from lib.configdata import ConfigData
-from lib.unit import Unit
+from smblib.settings import Settings
+from smblib.unit import Unit
 
 
-class Units:
+class Units(object):
     """
      Unidades de backup
 
@@ -35,34 +33,23 @@ class Units:
         Obtiene la colección de Unidades
 
         """
+        super().__init__()
 
         # Obtiene los datos de configuración
-        self.__Config = ConfigData()
-
-        self._Lista = []  # Lista de unidades
-
-        # lee el directorio de ficheros de configuración de unidades
-        with os.scandir(self.__Config.DirUnits) as ficheros:
-            for fichero in ficheros:
-                if (os.path.isfile(
-                        os.path.join(self.__Config.DirUnits, fichero))) and (
-                            Path(fichero).suffix == ".json") and (
-                                os.path.basename(fichero) != "default.json"):
-
-                    # selecciona los ficheros .json
-                    # y que no sean el default.json
-                    # añade su nombre sin extensión ni path
-                    self._Lista.append(
-                        Unit(
-                            Path(basename(fichero)).resolve().stem,
-                            self.__Config.DirUnits))
-
-        # la unidad por defecto
-        self._DefaultUnit = Unit(self.__Config.DefaultUnitName,
-                                 self.__Config.DirUnits)
+        self.__Config = Settings()
 
         # el punto de montaje por defecto
-        self._DefaultMountPoint = self.__Config.DefaultMountPoint
+        self._DefaultMountPoint = self.__Config.units_mount
+
+        self.__Lista = []  # Lista de unidades
+
+        # lee el directorio de ficheros de configuración de unidades
+        self.__dirconfunits = Path(self.__Config.units_conf)
+        _filesunit = self.__dirconfunits.glob("*.json")
+        for fichero in _filesunit:
+            self.__Lista.append(
+                Unit(fichero.stem, self.__dirconfunits,
+                     self.__Config.units_mount))
 
     def __del__(self):
         """

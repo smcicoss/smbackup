@@ -12,19 +12,16 @@ Crea, edita o borra unidades de copia
 
 """
 
-from lib.editcopies import EditCopies
-import os
+# from smblib.editcopies import EditCopies
+from pathlib import Path
 import shutil
 import textwrap
 
-from mod.blkdevices import BlockDevices
-from lib.units import Units
-from lib.unitdata import UnitData
+from smblib.units import Units
+from smblib.unitdata import UnitData
 from utiles.strutil import Color, text_paragraph
 from utiles.strutil import clean_str, clear, h1, h2
 from utiles.menu import Menu
-
-color = Color()
 
 
 class EditUnits():
@@ -44,7 +41,6 @@ class EditUnits():
 
         self.__hConfig = HostConfig
         self.__myUnits = Units()
-        self.__myDevs = BlockDevices()
 
         opciones = [  # opciones menú
             {

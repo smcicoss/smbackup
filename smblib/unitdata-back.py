@@ -3,22 +3,22 @@
 #
 
 import re
-from utiles.strutil import clean_str, data_line
+import pathlib as Path
+from utiles.strutil import clean_str
 
 
 class UnitData(object):
     def __init__(self, data=None):
         super().__init__()
-        if data is None:
-            for key in self.keys():
-                self[key] = None
+        if data is None or (not isinstance(data, dict)
+                            and not isinstance(data, UnitData)):
+            for field in self.keys():
+                self[field] = None
+
             self.__modified = False
-        elif isinstance(data, dict) or isinstance(data, UnitData):
-            for key in self.keys():
-                self[key] = data[key]
-            self.__modified = True
         else:
-            raise ValueError
+            for field in self.keys():
+                self[field] = data[field]
 
     def __getitem__(self, key):
         return self.__getattribute__(key)
@@ -38,20 +38,17 @@ class UnitData(object):
         return lenOfData
 
     def __str__(self):
-        _str = ""
-        for key in self.keys():
-            _str += data_line({'key': key, 'value': str(self[key])})
-
-        return _str
+        # TODO
+        return "En construción UnidData.__str__"
 
     def keys(self):
         return [
-            "name", "description", "wwn", "uuid", "uuidp", "label", "crypt",
-            "dirbackups", "meta"
+            'Name', 'Description', "wwn", 'Label', 'Uuid', 'UuidP', 'Crypt',
+            'DirBackups', 'Meta'
         ]
 
     @property
-    def name(self):
+    def Name(self):
         """
         Name
 
@@ -62,20 +59,20 @@ class UnitData(object):
         """
         return self.__name
 
-    @name.setter
-    def name(self, value):
+    @Name.setter
+    def Name(self, value):
         if value is None:
             self.__name = None
-        else:
-            self.__name = clean_str(value)
+            return
+        self.__name = clean_str(value)
         self.__modified = True
 
     @property
-    def description(self):
+    def Description(self):
         return self.__description
 
-    @description.setter
-    def description(self, value):
+    @Description.setter
+    def Description(self, value):
         self.__description = value
         self.__modified = True
 
@@ -85,21 +82,34 @@ class UnitData(object):
 
     @wwn.setter
     def wwn(self, value):
+        self.__wwn = value
+
+    @property
+    def Label(self):
+        return self.__label
+
+    @Label.setter
+    def Label(self, value):
         if value is None:
-            self.__wwn = None
+            self.__label = None
             return
-        value = value.lower()
-        wwn_regexp = re.compile(r"^0x[a-f0-9]{16}$")
-        if wwn_regexp.match(value) is not None:
-            self.__wwn = value
+
+        if len(value) > 16:
+            value = value[0:15]
+        label_regexp = re.compile(r"^([A-Z])\w+$", re.VERBOSE)
+        if label_regexp.match(value) is not None:
+            self.__label = value
             self.__modified = True
 
     @property
-    def uuid(self):
-        return self.__uuid
+    def Uuid(self):
+        try:
+            return self.__uuid
+        except AttributeError:
+            return None
 
-    @uuid.setter
-    def uuid(self, value):
+    @Uuid.setter
+    def Uuid(self, value):
         if value is None:
             self.__uuid = None
             return
@@ -111,11 +121,11 @@ class UnitData(object):
             self.__modified = True
 
     @property
-    def uuidp(self):
+    def UuidP(self):
         return self.__uuidp
 
-    @uuidp.setter
-    def uuidp(self, value):
+    @UuidP.setter
+    def UuidP(self, value):
         """
         Uuidp UUID Padre
 
@@ -139,24 +149,7 @@ class UnitData(object):
             self.__modified = True
 
     @property
-    def label(self):
-        return self.__label
-
-    @label.setter
-    def label(self, value):
-        if value is None:
-            self.__label = None
-            return
-
-        if len(value) > 16:
-            value = value[0:15]
-        label_regexp = re.compile(r"^([A-Za-z])\w+$", re.VERBOSE)
-        if label_regexp.match(value) is not None:
-            self.__label = value
-            self.__modified = True
-
-    @property
-    def crypt(self):
+    def Crypt(self):
         """
         Crypt
 
@@ -167,22 +160,19 @@ class UnitData(object):
         """
         return self.__crypt
 
-    @crypt.setter
-    def crypt(self, value):
-        if value is None:
-            self.__crypt = None
-            return
+    @Crypt.setter
+    def Crypt(self, value):
         if not isinstance(value, bool):
-            raise ValueError
+            return
         self.__crypt = value
         self.__modified = True
 
     @property
-    def dirbackups(self):
+    def DirBackups(self):
         return self.__dir_backups
 
-    @dirbackups.setter
-    def dirbackups(self, value):
+    @DirBackups.setter
+    def DirBackups(self, value):
         """
         DirBackups Directorio de backups
 
@@ -200,15 +190,15 @@ class UnitData(object):
             value = value[1:]
         value = clean_str(value)
 
-        self.__dir_backups = value
+        self.__dir_backups = Path(value)
         self.__modified = True
 
     @property
-    def meta(self):
+    def Meta(self):
         return self.__meta
 
-    @meta.setter
-    def meta(self, value):
+    @Meta.setter
+    def Meta(self, value):
         """
         Meta Directorio
 
@@ -221,9 +211,10 @@ class UnitData(object):
         if value is None:
             self.__meta = None
             return
-        self.__meta = clean_str(value)
-        if value[0] == '/':
-            value = value[1:]
+        _dir_meta = Path(clean_str(value))
+        if _dir_meta.is_absolute():
+            _dir_meta = _dir_meta.relative_to('/')
+        self.__meta = _dir_meta.expanduser()
         self.__modified = True
 
     @property

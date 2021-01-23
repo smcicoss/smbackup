@@ -23,11 +23,12 @@ puede estar duplicada o no existir
 
 """
 
-import os
+from pathlib import Path
 import json
 from smblib.unitdata import UnitData
-from utiles.strutil import clean_str
-from mod.blkdevices import BlockDevices
+from utiles.strutil import h2
+from blkmod.blockdevices import BlockDevices
+from blkmod.readdevice import is_volume_open
 
 
 class Unit(UnitData):
@@ -38,54 +39,53 @@ class Unit(UnitData):
      Mantiene los datos y los procedimientos relativos a
      las unidades de copia de seguridad
     """
-    def __init__(self, value, pathUnits):
+    def __init__(self, name, pathUnits, defaultmount):
 
-        if pathUnits is None or not os.path.isdir(pathUnits):
-            raise TypeError
+        super().__init__()
 
-        if isinstance(value, str):
-            # se espera que la unidad ya exista con ese nombre
-            self.__fileName = clean_str(value) + '.json'
-            self.__pathFileUnit = os.path.join(pathUnits, self.__fileName)
+        self.__isConnected = False
+
+        if not isinstance(pathUnits, str):
+            raise ValueError
+        else:
+            # path a configuracion de unidades
+            self.__pathUnits = Path(pathUnits)
+            if not self.__pathUnits.is_dir():
+                raise ValueError
+
+        if isinstance(name, str):
+            # Nombre de la unidad
+            self.name = name
+            self.__pathFileUnit = self.__pathUnits / (name + '.json')
             if self.__load_data():
                 self.__exists = True
-
-        elif isinstance(value, UnitData):
-            # Nueva con UnitData
-            self.__fileName = value['Name'] + '.json'
-            self.__pathFileUnit = os.path.join(pathUnits, self.__fileName)
-            super().__init__(value)
-
-        elif isinstance(value, dict):
-            # Nueva con dictionary
-            self.__fileName = value['Name'] + '.json'
-            self.__pathFileUnit = os.path.join(pathUnits, self.__fileName)
-            super().__init__(value)
-
-        elif value is None:
-            super().__init__()
-
-        else:
-            raise TypeError("Error en datos pasados a Unidad")
-
-        if os.path.exists(self.__pathFileUnit):
-            self.__exists = True
-        else:
-            self.__exists = False
-
-        if self.Uuid is not None:
-            self.__Devices = BlockDevices()
-            result = self.__Devices.full_search_uuid(self.Uuid)
-            if result is None:
-                self.__isConnected = False
+            else:
                 return
 
-            self.__BlkDev = result[result['en']]
+        self.__mountpoint = Path(defaultmount) / name
+
+        if self.wwn is not None:
+            self.__Devices = BlockDevices()
+            self.__disk = self.__Devices.get_disk_wwn(self.wwn)
+            if self.__disk is None:
+                return
+
             self.__isConnected = True
-            if not self.Crypt and self.__BlkDev.type == 'part':
-                self.__mountpoint = self.__BlkDev.mountpoint
+
+            if not self.crypt:
+                self.__part = self.__disk.get_partition_uuid(self.uuid)
+                self.__FS = self.__part
             else:
-                self.__mountpoint = None
+                self.__part = self.__disk.get_partition_uuid(self.uuidp)
+
+                if not is_volume_open(self.name):
+                    self.__part.open_volume(self.name)
+                self.__FS = self.__part.volume
+
+            if self.__FS.mountpoint is None:
+                self.__FS.mount(self.mountpoint)
+            else:
+                self.__mountpoint = self.__FS.mountpoint
 
     def __str__(self):
         """
@@ -96,35 +96,25 @@ class Unit(UnitData):
         Returns:
             str: string formateado
         """
-        string = f"Nombre: {self.Name.rjust(52, '.')}\n"
-        string += f"Archivo: {self.FileName.rjust(51,'.')}\n"
-        string += f"Descripción: {self.Description.rjust(47,'.')}\n"
-        string += f"Label: {self.Label.rjust(53,'.')}\n"
-        string += f"UUID: {self.Uuid.rjust(54,'.')}\n"
-        if self.Crypt:
-            string += f"UUIDP: {self.UuidP.rjust(53,'.')}\n"
-        string += f"Cifrado: {str(self.Crypt).rjust(51,'.')}\n"
-        string += f"Subdirectorio: {self.DirBackups.rjust(45,'.')}\n"
-        string += f"Conf. copias: {self.Meta.rjust(46,'.')}\n"
+        _str = h2(f"Unidad {self.name}")
+        _str += super().__str__()
 
-        return string
+        return _str
 
     def __load_data(self):
-        if not os.path.exists(self.__pathFileUnit):
+        if not self.__pathFileUnit.exists():
             return False
 
         try:
-            with open(self.__pathFileUnit, 'r') as funidad:
+            with self.__pathFileUnit.open('r') as funidad:
                 # leo el fichero
                 data_unit = json.load(funidad)
 
         except IOError:
             return False
 
-        super().__init__(data_unit)
-        # for field in self.fields:
-        # self.__setitem(field, data_unit[field])
-        self.__exists = True
+        for key in self.keys():
+            self[key] = data_unit[key]
         return True
 
     def have_copies(self):
@@ -139,14 +129,11 @@ class Unit(UnitData):
         if self.mountpoint is None:
             return None
 
-        _fullMeta = os.path.join(self.__mountpoint, self.Meta)
+        _fullMeta = Path(self.__mountpoint) / self.Meta
         _copies = []
-        with os.scandir(_fullMeta) as _filesMeta:
+        with _fullMeta.glob('*.json') as _filesMeta:
             for _fileMeta in _filesMeta:
-                if not _fileMeta.name.startswith('.') and \
-                   _fileMeta.is_file and \
-                   _fileMeta.name.endswith('.json'):
-                    _copies.append(_fileMeta)
+                _copies.append(_fileMeta)
         return _copies
 
     @property
@@ -161,7 +148,7 @@ class Unit(UnitData):
             Bool: True si el fichero existe
         """
 
-        return self.__exists
+        return self.__pathFileUnit.exists()
 
     def save(self):
         """Salva los datos en fichero <nombre_unidad>.json
@@ -195,12 +182,6 @@ class Unit(UnitData):
         return self.__pathFileUnit
 
     @property
-    def BLkDevice(self):
-        if not self.__isConnected:
-            return None
-        return self.__BlkDev
-
-    @property
     def connected(self):
         return self.__isConnected
 
@@ -214,8 +195,24 @@ class Unit(UnitData):
     def DevPath(self):
         if not self.__isConnected:
             return None
-        return self.__BlkDev.path
+        return self.__FS.path
 
     @property
-    def myData(self):
-        return super()
+    def Disk(self):
+        if not self.__isConnected:
+            return None
+        return self.__disk
+
+    @property
+    def Part(self):
+        if not self.__isConnected:
+            return None
+        return self.__part
+
+    @property
+    def FS(self):
+        if not self.__isConnected:
+            return None
+        if self.__mountpoint is None:
+            return None
+        return self.__FS
